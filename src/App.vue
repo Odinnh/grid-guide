@@ -1,5 +1,17 @@
+<template>
+  <div class="grid-lines">
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+    <div class="grid-line"></div>
+  </div>
+  <main class="smol-breakout-grid"></main>
+</template>
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 const columns = ref(null)
 
 const gridLines = ref({
@@ -8,20 +20,15 @@ const gridLines = ref({
     columnCount: 3,
   },
   breakout: {
-    width: +100,
+    width: 100,
   },
   maxWidth: 1400,
 })
-</script>
 
-<template>
-  <div class="grid-lines">
-    <div class="grid-line"></div>
-    <div class="grid-line"></div>
-    <div class="grid-line"></div>
-  </div>
-  <main class="smol-breakout-grid"></main>
-</template>
+const columnsRule = computed(() => {
+  return `repeat(${gridLines.value.content.columnCount}, --one-column)`
+})
+</script>
 
 <style>
 * {
@@ -29,28 +36,40 @@ const gridLines = ref({
   padding: 0;
   box-sizing: border-box;
 }
+
 .smol-breakout-grid,
 .grid-lines {
-  --max-content-width: 50ch;
-  --breakout-difference: 0.2;
-
-  /*  Compute total allowed grid width to `--breakout-difference` 
-      larger than content area  */
-  --breakout-grid-width: calc(
-    var(--max-content-width) +
-      (var(--max-content-width) * var(--breakout-difference))
-  );
+  --padding-inline: 1rem;
+  --content-max-width: v-bind(gridLines.content.width + 'px');
+  --breakout-max-width: v-bind(gridLines.maxWidth + 'px');
+  --one-column: calc((100% - (var(--padding-inline) * 2)) / 3),
+    calc(var(--content-max-width) / 3);
+  /* prettier-ignore */
+  --columns: 
+    min(var(--one-column)) 
+    [block-left-end wide-left-end]
+    min(var(--one-column)) 
+    [wide-right-start] 
+    min(var(--one-column));
+  /* prettier */
+  --breakout-size: v-bind(gridLines.breakout.width + 'px');
+  /* prettier-ignore */
+  --site-columns:
+  [max-width-area-start]
+    minmax(var(--padding-inline), 1fr)
+      [wide-start wide-left-start]
+      minmax(0, var(--breakout-size))
+        [content-block-start]
+          var(--columns)
+        [content-block-end]
+      minmax(0, var(--breakout-size))
+      [wide-end wide-right-end]
+      minmax(var(--padding-inline), 1fr)
+  [max-width-area-end];
+  /* prettier */
 
   display: grid;
-  grid-template-columns:
-    [grid-start] 1fr
-    [content-start]
-    v-bind('gridLines.content.width')
-    [breakout]
-    v-bind('gridLines.breakout.width')
-    minmax(min(100%, var(--max-content-width)), 1fr)
-    [content-end] 1fr
-    [grid-end];
+  grid-template-columns: var(--site-columns);
   width: min(100% - 2rem, var(--breakout-grid-width));
   row-gap: 1rem;
   margin: 5vb auto;
