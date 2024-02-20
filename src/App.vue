@@ -1,32 +1,82 @@
 <template>
+  <label
+    >Columns: <input v-model="inputColumnCount" type="number" min="1" max="12"
+  /></label>
+  <label
+    >Content Width:<input
+      v-model="inputcontentWidth"
+      type="number"
+      min="500"
+      max="1400"
+  /></label>
+  <label
+    >Breakout Width:<input
+      v-model="inputBreakouSize"
+      type="number"
+      min="0"
+      :max="(gridLines.maxWidth - gridLines.content.width) / 2"
+  /></label>
+  <label
+    >Max Width:<input
+      v-model="inputMaxWidth"
+      type="number"
+      :min="inputcontentWidth"
+  /></label>
+  <label>Max Width:<input v-model="inputGap" type="number" /></label>
   <div class="grid-lines">
     <div class="grid-line"></div>
     <div class="grid-line"></div>
-    <div class="grid-line"></div>
-    <div class="grid-line"></div>
-    <div class="grid-line"></div>
+    <div v-for="columns in columngrid" :key="columns" class="grid-line"></div>
     <div class="grid-line"></div>
     <div class="grid-line"></div>
   </div>
   <main class="smol-breakout-grid"></main>
+  <div>{{ columnsRule }}</div>
 </template>
 <script setup>
 import { ref, computed } from 'vue'
-const columns = ref(null)
-
-const gridLines = ref({
-  content: {
-    width: 900,
-    columnCount: 3,
-  },
-  breakout: {
-    width: 100,
-  },
-  maxWidth: 1400,
+const inputColumnCount = ref(3)
+const inputcontentWidth = ref(900)
+const inputBreakouSize = ref(100)
+const inputMaxWidth = ref(1200)
+const inputGap = ref(0)
+const gridLines = computed(() => {
+  return {
+    content: {
+      width: ref(inputcontentWidth.value),
+      columnCount: ref(inputColumnCount.value),
+    },
+    breakout: {
+      width: ref(inputBreakouSize.value),
+    },
+    maxWidth: ref(inputMaxWidth.value),
+  }
 })
 
 const columnsRule = computed(() => {
-  return `repeat(${gridLines.value.content.columnCount}, --one-column)`
+  let rule = ''
+  rule += `
+  [max-width-area-start]
+    minmax(0,1fr)
+      [wide-start wide-left-start]
+      minmax( var(--padding-inline),var(--breakout-size))
+      [content-block-start `
+  for (let i = 1; i < gridLines.value.content.columnCount.value + 1; i++) {
+    rule += `col-${i}-start] min(var(--one-column)) [col-${i}-end `
+  }
+  rule += `content-block-end]
+        minmax(var(--padding-inline),var(--breakout-size))
+      [wide-end wide-right-end]
+      minmax(0,1fr)
+  [max-width-area-end]`
+  return rule
+})
+const columngrid = computed(() => {
+  let rule = {}
+  for (let i = 0; i < gridLines.value.content.columnCount.value; i++) {
+    rule[i] = '<div class="grid-line"></div>'
+  }
+  return rule
 })
 </script>
 
@@ -37,36 +87,24 @@ const columnsRule = computed(() => {
   box-sizing: border-box;
 }
 
+body {
+  padding: 2px;
+}
 .smol-breakout-grid,
 .grid-lines {
   --padding-inline: 1rem;
-  --content-max-width: v-bind(gridLines.content.width + 'px');
-  --breakout-max-width: v-bind(gridLines.maxWidth + 'px');
-  --one-column: calc((100% - (var(--padding-inline) * 2)) / 3),
-    calc(var(--content-max-width) / 3);
-  /* prettier-ignore */
-  --columns: 
-    min(var(--one-column)) 
-    [block-left-end wide-left-end]
-    min(var(--one-column)) 
-    [wide-right-start] 
-    min(var(--one-column));
-  /* prettier */
-  --breakout-size: v-bind(gridLines.breakout.width + 'px');
-  /* prettier-ignore */
-  --site-columns:
-  [max-width-area-start]
-    minmax(var(--padding-inline), 1fr)
-      [wide-start wide-left-start]
-      minmax(0, var(--breakout-size))
-        [content-block-start]
-          var(--columns)
-        [content-block-end]
-      minmax(0, var(--breakout-size))
-      [wide-end wide-right-end]
-      minmax(var(--padding-inline), 1fr)
-  [max-width-area-end];
-  /* prettier */
+  --content-max-width: v-bind(gridLines.content.width.value + 'px');
+  --breakout-max-width: v-bind(gridLines.maxWidth.value + 'px');
+  gap: v-bind(inputGap + 'px');
+  --one-column: calc(
+      (100% - (var(--padding-inline) * 2)) /
+        v-bind(gridLines.content.columnCount.value)
+    ),
+    calc(var(--content-max-width) / v-bind(gridLines.content.columnCount.value));
+
+  --breakout-size: v-bind(gridLines.breakout.width.value + 'px');
+
+  --site-columns: v-bind(columnsRule);
 
   display: grid;
   grid-template-columns: var(--site-columns);
@@ -87,7 +125,7 @@ const columnsRule = computed(() => {
 
 .grid-lines {
   position: absolute;
-  inset: 0;
+  inset: 2px;
   pointer-events: none;
 }
 .grid-line {
